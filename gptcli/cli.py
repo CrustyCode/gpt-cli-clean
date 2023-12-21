@@ -6,7 +6,7 @@ from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.key_binding.bindings import named_commands
 from rich.console import Console
 from rich.live import Live
-from rich.markdown import Markdown
+from .markdown import CustomMarkdown
 from typing import Any, Dict, Optional, Tuple
 
 from rich.text import Text
@@ -23,11 +23,7 @@ from gptcli.session import (
 
 
 TERMINAL_WELCOME = """
-Hi! I'm here to help. Type `:q` or Ctrl-D to exit, `:c` or Ctrl-C and Enter to clear
-the conversation, `:r` or Ctrl-R to re-generate the last response.
-To enter multi-line mode, enter a backslash `\\` followed by a new line.
-Exit the multi-line mode by pressing ESC and then Enter (Meta+Enter).
-Try `:?` for help.
+Assistant:
 """
 
 
@@ -50,7 +46,7 @@ class StreamingMarkdownPrinter:
         self.current_text += text
         if self.markdown:
             assert self.live
-            content = Markdown(self.current_text, style="green")
+            content = CustomMarkdown(self.current_text, style="green")
             self.live.update(content)
             self.live.refresh()
         else:
@@ -91,7 +87,7 @@ class CLIChatListener(ChatListener):
 
     def on_chat_start(self):
         console = Console(width=80)
-        console.print(Markdown(TERMINAL_WELCOME))
+        console.print(CustomMarkdown(TERMINAL_WELCOME))
 
     def on_chat_clear(self):
         self.console.print("[bold]Cleared the conversation.[/bold]")
