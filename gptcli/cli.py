@@ -116,14 +116,14 @@ class CLIChatListener(ChatListener):
         return CLIResponseStreamer(self.console, self.markdown)
 
 
-def parse_args(input: str) -> Tuple[str, Dict[str, Any]]:
+def parse_args(input: str, parse_args = False) -> Tuple[str, Dict[str, Any]]:
     args = {}
-    regex = r"--(\w+)(?:\s+|=)([^\s]+)"
-    matches = re.findall(regex, input)
-    if matches:
-        args = dict(matches)
-        input = input.split("--")[0].strip()
-
+    if parse_args:
+        regex = r"--(\w+)(?:\s+|=)([^\s]+)"
+        matches = re.findall(regex, input)
+        if matches:
+            args = dict(matches)
+            input = input.split("--")[0].strip()
     return input, args
 
 
