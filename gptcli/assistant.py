@@ -7,7 +7,6 @@ from typing import Any, Dict, Iterator, Optional, TypedDict, List
 from gptcli.completion import (
     CompletionEvent,
     CompletionProvider,
-    ModelOverrides,
     Message,
 )
 from gptcli.providers.google import GoogleCompletionProvider
@@ -15,6 +14,7 @@ from gptcli.providers.llama import LLaMACompletionProvider
 from gptcli.providers.openai import OpenAICompletionProvider
 from gptcli.providers.anthropic import AnthropicCompletionProvider
 from gptcli.providers.cohere import CohereCompletionProvider
+from gptcli.providers.azure_openai import AzureOpenAICompletionProvider
 
 
 class AssistantConfig(TypedDict, total=False):
@@ -75,6 +75,8 @@ def get_completion_provider(model: str) -> CompletionProvider:
         or model.startswith("o1")
     ):
         return OpenAICompletionProvider()
+    elif model.startswith("oai-azure:"):
+        return AzureOpenAICompletionProvider()
     elif model.startswith("claude"):
         return AnthropicCompletionProvider()
     elif model.startswith("llama"):
@@ -107,28 +109,20 @@ class Assistant:
     def init_messages(self) -> List[Message]:
         return self.config.get("messages", [])[:]
 
-    def supported_overrides(self) -> List[str]:
-        return ["model", "temperature", "top_p"]
-
-    def _param(self, param: str, override_params: ModelOverrides) -> Any:
-        # If the param is in the override_params, use that value
-        # Otherwise, use the value from the config
+    def _param(self, param: str) -> Any:
+        # Use the value from the config if exists
         # Otherwise, use the default value
-        return override_params.get(
-            param, self.config.get(param, CONFIG_DEFAULTS[param])
-        )
+        return self.config.get(param, CONFIG_DEFAULTS[param])
 
-    def complete_chat(
-        self, messages, override_params: ModelOverrides = {}, stream: bool = True
-    ) -> Iterator[CompletionEvent]:
-        model = self._param("model", override_params)
+    def complete_chat(self, messages, stream: bool = True) -> Iterator[CompletionEvent]:
+        model = self._param("model")
         completion_provider = get_completion_provider(model)
         return completion_provider.complete(
             messages,
             {
                 "model": model,
-                "temperature": float(self._param("temperature", override_params)),
-                "top_p": float(self._param("top_p", override_params)),
+                "temperature": float(self._param("temperature")),
+                "top_p": float(self._param("top_p")),
             },
             stream,
         )

@@ -13,9 +13,16 @@ from .markdown import CustomMarkdown
 
 from rich.text import Text
 
-from gptcli.session import (ALL_COMMANDS, COMMAND_CLEAR, COMMAND_QUIT,
-                            COMMAND_RERUN, ChatListener, InvalidArgumentError,
-                            ResponseStreamer, UserInputProvider)
+from gptcli.session import (
+    ALL_COMMANDS,
+    COMMAND_CLEAR,
+    COMMAND_QUIT,
+    COMMAND_RERUN,
+    ChatListener,
+    InvalidArgumentError,
+    ResponseStreamer,
+    UserInputProvider,
+)
 
 TERMINAL_WELCOME = """
 > 
@@ -145,15 +152,6 @@ def parse_args(input: str) -> Tuple[str, Dict[str, Any]]:
     for i, (part, delimiter) in enumerate(extracted_parts):
         input = input.replace(f"__EXTRACTED_PART_{i}__", f"{delimiter}{part.strip()}{delimiter}")
 
-# def parse_args(input: str, parse_args = False) -> Tuple[str, Dict[str, Any]]:
-#     args = {}
-#     if parse_args:
-#         regex = r"--(\w+)(?:\s+|=)([^\s]+)"
-#         matches = re.findall(regex, input)
-#         if matches:
-#             args = dict(matches)
-#             input = input.split("--")[0].strip()
-
     return input, args
 
 
@@ -170,12 +168,11 @@ class CLIUserInputProvider(UserInputProvider):
             history=CLIFileHistory(history_filename)
         )
 
-    def get_user_input(self) -> Tuple[str, Dict[str, Any]]:
+    def get_user_input(self) -> str:
         while (next_user_input := self._request_input()) == "":
             pass
 
-        user_input, args = self._parse_input(next_user_input)
-        return user_input, args
+        return next_user_input
 
     def prompt(self, multiline=False):
         bindings = KeyBindings()
