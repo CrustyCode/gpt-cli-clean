@@ -163,10 +163,11 @@ class CLIFileHistory(FileHistory):
 
 
 class CLIUserInputProvider(UserInputProvider):
-    def __init__(self, history_filename) -> None:
+    def __init__(self, history_filename, model_name) -> None:
         self.prompt_session = PromptSession[str](
             history=CLIFileHistory(history_filename)
         )
+        self.model_name = model_name
 
     def get_user_input(self) -> str:
         while (next_user_input := self._request_input()) == "":
@@ -207,7 +208,7 @@ class CLIUserInputProvider(UserInputProvider):
 
         try:
             return self.prompt_session.prompt(
-                "> " if not multiline else "multiline> ",
+                self.model_name + " ⮞ " if not multiline else "multiline ↪ ",
                 vi_mode=True,
                 multiline=multiline,
                 enable_open_in_editor=True,
