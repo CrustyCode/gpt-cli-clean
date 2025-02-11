@@ -1,7 +1,8 @@
 import re
+import os
 from typing import Iterator, List, Optional, cast
 import openai
-from openai import OpenAI
+from openai import AzureOpenAI, OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
 from gptcli.completion import (
@@ -33,6 +34,9 @@ class OpenAICompletionProvider(CompletionProvider):
         if model.startswith("oai-compat:"):
             model = model[len("oai-compat:") :]
 
+        if model.startswith("oai-azure:"):
+            model = model[len("oai-azure:") :]
+
         try:
             if stream:
                 response_iter = self.client.chat.completions.create(
@@ -58,6 +62,10 @@ class OpenAICompletionProvider(CompletionProvider):
                             total_tokens=response.usage.total_tokens,
                             pricing=pricing,
                         )
+                    # add the citations
+                    if len(response.choices) > 0 and response.choices[0].finish_reason:
+                        if hasattr(response, 'citations') and response.citations:
+                            yield MessageDeltaEvent(os.linesep + os.linesep + "".join([(f"{citation} [{i+1}]" + os.linesep) for i, citation in enumerate(response.citations)]))
             else:
                 response = self.client.chat.completions.create(
                     messages=cast(List[ChatCompletionMessageParam], messages),
@@ -107,11 +115,30 @@ GPT_4_32K_PRICE_PER_TOKEN: Pricing = {
     "response": 120.0 / 1_000_000,
 }
 
-GPT_4_O_PRICE_PER_TOKEN: Pricing = {
+GPT_4_O_2024_05_13_PRICE_PER_TOKEN: Pricing = {
     "prompt": 5.0 / 1_000_000,
     "response": 15.0 / 1_000_000,
 }
 
+GPT_4_O_2024_08_06_PRICE_PER_TOKEN: Pricing = {
+    "prompt": 2.50 / 1_000_000,
+    "response": 10.0 / 1_000_000,
+}
+
+GPT_4_O_MINI_PRICE_PER_TOKEN: Pricing = {
+    "prompt": 0.150 / 1_000_000,
+    "response": 0.600 / 1_000_000,
+}
+
+O_1_PREVIEW_PRICE_PER_TOKEN: Pricing = {
+    "prompt": 15.0 / 1_000_000,
+    "response": 60.0 / 1_000_000,
+}
+
+O_1_MINI_PRICE_PER_TOKEN: Pricing = {
+    "prompt": 3.0 / 1_000_000,
+    "response": 12.0 / 1_000_000,
+}
 
 def gpt_pricing(model: str) -> Optional[Pricing]:
     if model.startswith("gpt-3.5-turbo-16k"):
@@ -120,11 +147,19 @@ def gpt_pricing(model: str) -> Optional[Pricing]:
         return GPT_3_5_TURBO_PRICE_PER_TOKEN
     elif model.startswith("gpt-4-32k"):
         return GPT_4_32K_PRICE_PER_TOKEN
+    elif model.startswith("gpt-4o-mini"):
+        return GPT_4_O_MINI_PRICE_PER_TOKEN
+    elif model.startswith("gpt-4o-2024-05-13") or model.startswith("chatgpt-4o-latest"):
+        return GPT_4_O_2024_05_13_PRICE_PER_TOKEN
     elif model.startswith("gpt-4o"):
-        return GPT_4_O_PRICE_PER_TOKEN
+        return GPT_4_O_2024_08_06_PRICE_PER_TOKEN
     elif model.startswith("gpt-4-turbo") or re.match(r"gpt-4-\d\d\d\d-preview", model):
         return GPT_4_TURBO_PRICE_PER_TOKEN
     elif model.startswith("gpt-4"):
         return GPT_4_PRICE_PER_TOKEN
+    elif model.startswith("o1-preview"):
+        return O_1_PREVIEW_PRICE_PER_TOKEN
+    elif model.startswith("o1-mini"):
+        return O_1_MINI_PRICE_PER_TOKEN
     else:
         return None

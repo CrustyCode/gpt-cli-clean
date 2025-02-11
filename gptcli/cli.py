@@ -1,15 +1,19 @@
 import re
+from typing import Any, Dict, Optional, Tuple
+
+from openai import BadRequestError, OpenAIError
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
-from openai import OpenAIError, BadRequestError
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.key_binding.bindings import named_commands
 from rich.console import Console
 from rich.live import Live
-from .markdown import CustomMarkdown
 from typing import Any, Dict, Optional, Tuple
+from rich.markdown import Markdown
+from .markdown import CustomMarkdown
 
 from rich.text import Text
+
 from gptcli.session import (
     ALL_COMMANDS,
     COMMAND_CLEAR,
@@ -21,9 +25,8 @@ from gptcli.session import (
     UserInputProvider,
 )
 
-
 TERMINAL_WELCOME = """
-Assistant:
+> 
 """
 
 
@@ -116,14 +119,49 @@ class CLIChatListener(ChatListener):
         return CLIResponseStreamer(self.console, self.markdown)
 
 
-def parse_args(input: str, parse_args = False) -> Tuple[str, Dict[str, Any]]:
+# def parse_args(input: str, parse_args = False) -> Tuple[str, Dict[str, Any]]:
+#     args = {}
+#     if parse_args:
+#         regex = r"--(\w+)(?:\s+|=)([^\s]+)"
+#         matches = re.findall(regex, input)
+#         if matches:
+#             args = dict(matches)
+#             input = input.split("--")[0].strip()
+
+def parse_args(input: str) -> Tuple[str, Dict[str, Any]]:
+    # Extract parts enclosed in specific delimiters (triple backticks, triple quotes, single backticks)
+    extracted_parts = []
+    delimiters = ['```', '"""', '`']
+
+    def replacer(match):
+        for i, delimiter in enumerate(delimiters):
+            part = match.group(i + 1)
+            if part is not None:
+                extracted_parts.append((part, delimiter))
+                break
+        return f"__EXTRACTED_PART_{len(extracted_parts) - 1}__"
+
+    # Construct the regex pattern dynamically from the delimiters list
+    pattern_fragments = [re.escape(d) + '(.*?)' + re.escape(d) for d in delimiters]
+    pattern = re.compile('|'.join(pattern_fragments), re.DOTALL)
+
+    input = pattern.sub(replacer, input)
+
+    # Parse the remaining string for arguments
     args = {}
-    if parse_args:
-        regex = r"--(\w+)(?:\s+|=)([^\s]+)"
-        matches = re.findall(regex, input)
-        if matches:
-            args = dict(matches)
-            input = input.split("--")[0].strip()
+    regex = r'--(\w+)(?:=(\S+)|\s+(\S+))?'
+    matches = re.findall(regex, input)
+
+    if matches:
+        for key, value1, value2 in matches:
+            value = value1 if value1 else value2 if value2 else ''
+            args[key] = value.strip("\"'")
+        input = re.sub(regex, "", input).strip()
+
+    # Add back the extracted parts, with enclosing backticks or quotes
+    for i, (part, delimiter) in enumerate(extracted_parts):
+        input = input.replace(f"__EXTRACTED_PART_{i}__", f"{delimiter}{part.strip()}{delimiter}")
+
     return input, args
 
 
@@ -135,17 +173,17 @@ class CLIFileHistory(FileHistory):
 
 
 class CLIUserInputProvider(UserInputProvider):
-    def __init__(self, history_filename) -> None:
+    def __init__(self, history_filename, model_name) -> None:
         self.prompt_session = PromptSession[str](
             history=CLIFileHistory(history_filename)
         )
+        self.model_name = model_name
 
-    def get_user_input(self) -> Tuple[str, Dict[str, Any]]:
+    def get_user_input(self) -> str:
         while (next_user_input := self._request_input()) == "":
             pass
 
-        user_input, args = self._parse_input(next_user_input)
-        return user_input, args
+        return next_user_input
 
     def prompt(self, multiline=False):
         bindings = KeyBindings()
@@ -180,7 +218,7 @@ class CLIUserInputProvider(UserInputProvider):
 
         try:
             return self.prompt_session.prompt(
-                "> " if not multiline else "multiline> ",
+                self.model_name + " ⮞ " if not multiline else "multiline ↪ ",
                 vi_mode=True,
                 multiline=multiline,
                 enable_open_in_editor=True,
