@@ -8,6 +8,7 @@ from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.key_binding.bindings import named_commands
 from rich.console import Console
 from rich.live import Live
+from typing import Any, Dict, Optional, Tuple
 from rich.markdown import Markdown
 from .markdown import CustomMarkdown
 
@@ -117,6 +118,15 @@ class CLIChatListener(ChatListener):
     def response_streamer(self) -> ResponseStreamer:
         return CLIResponseStreamer(self.console, self.markdown)
 
+
+# def parse_args(input: str, parse_args = False) -> Tuple[str, Dict[str, Any]]:
+#     args = {}
+#     if parse_args:
+#         regex = r"--(\w+)(?:\s+|=)([^\s]+)"
+#         matches = re.findall(regex, input)
+#         if matches:
+#             args = dict(matches)
+#             input = input.split("--")[0].strip()
 
 def parse_args(input: str) -> Tuple[str, Dict[str, Any]]:
     # Extract parts enclosed in specific delimiters (triple backticks, triple quotes, single backticks)
