@@ -218,7 +218,7 @@ class CLIUserInputProvider(UserInputProvider):
 
         try:
             return self.prompt_session.prompt(
-                self.model_name + " ⮞ " if not multiline else "multiline ↪ ",
+                self.model_name + " → " if not multiline else "multiline ↪ ",
                 vi_mode=True,
                 multiline=multiline,
                 enable_open_in_editor=True,
